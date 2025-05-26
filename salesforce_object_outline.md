@@ -1,151 +1,160 @@
-# Salesforce Objects and Fields for AI Assistant
+# Salesforce Objects and Fields for Restaurant Onboarding
 
-This document outlines the Salesforce objects and fields, both standard and custom, relevant to the AI assistant's functionalities across various categories.
+This document outlines the Salesforce data model specifically for managing the "Restaurant Onboarding" lifecycle. It details the standard and custom objects, along with their key fields, that will support the AI assistant and the overall onboarding process.
 
-## 1. Customer Segmentation
+## 1. Standard Objects in Restaurant Onboarding
 
-*   **Standard Object: Account**
-    *   `Name` (Standard Field, Text): Organization name.
-    *   `Website` (Standard Field, URL): Organization's website.
-    *   `Industry` (Standard Field, Picklist): Industry of the organization.
-    *   `NumberOfEmployees` (Standard Field, Number): Size of the organization.
-    *   `Last_Activity_Date__c` (Custom Field, DateTime): Stores the timestamp of the last significant interaction or "trip" taken by the organization. Used to identify organizations that haven’t taken a trip in the last X days.
-    *   `Email_Domain__c` (Custom Field, Text): Extracted domain from primary contact's email (e.g., "company.com"). Used to help filter out freemail domains at an account level or analyze domain types.
-    *   `Verified_Email_Organization__c` (Custom Field, Boolean): Indicates if the primary contact(s) for the organization have verified email addresses.
-    *   `AccountSource` (Standard Field, Picklist): How the account was acquired.
-    *   `Ownership` (Standard Field, Picklist): e.g., Public, Private.
+*   **Lead:**
+    *   **Purpose:** Represents potential restaurants (prospects) that have expressed initial interest or have been identified through marketing efforts but are not yet qualified.
+    *   **Key Standard Fields:**
+        *   `Company`: Name of the restaurant.
+        *   `FirstName`, `LastName`: Contact person at the restaurant.
+        *   `Email`, `Phone`: Contact details.
+        *   `Street`, `City`, `State`, `PostalCode`, `Country`: Restaurant address.
+        *   `LeadSource`: How the lead was generated (e.g., 'Web', 'Referral', 'Trade Show').
+        *   `Status`: Lead lifecycle stage (e.g., 'Open - Not Contacted', 'Working - Contacted', 'Qualified', 'Unqualified').
+        *   `Description`: General notes, initial interest details.
+    *   **Custom Fields (Examples):**
+        *   `Lead.Cuisine_Type_Inquiry__c` (Text): Cuisine type mentioned during initial inquiry.
+        *   `Lead.Estimated_Restaurant_Size_Inquiry__c` (Text): Size mentioned or estimated.
+    *   **Usage:** Leads are qualified by sales/AI. Upon qualification, a Lead is converted into an `Account`, `Contact`, and optionally an `Opportunity`.
 
-*   **Standard Object: Contact**
-    *   `FirstName` (Standard Field, Text)
-    *   `LastName` (Standard Field, Text)
-    *   `Email` (Standard Field, Email): Contact's email address.
-    *   `Phone` (Standard Field, Phone)
-    *   `Is_Freemail__c` (Custom Field, Boolean, Formula): Formula field evaluating the `Email` field to determine if it's from a known freemail provider (e.g., gmail.com, outlook.com).
-    *   `AccountId` (Standard Field, Lookup to Account): Link to the organization.
+*   **Account (Represents the Restaurant Entity):**
+    *   **Purpose:** The primary record for each restaurant. This object holds core information about the restaurant business.
+    *   **Key Standard Fields:**
+        *   `Name`: Official name of the restaurant.
+        *   `Phone`: Main phone number.
+        *   `Website`: Restaurant's website.
+        *   `BillingStreet`, `BillingCity`, `BillingState`, `BillingPostalCode`, `BillingCountry`: Billing address (may differ from physical location if part of a group).
+        *   `ShippingStreet`, `ShippingCity`, `ShippingState`, `ShippingPostalCode`, `ShippingCountry`: Physical location of the restaurant.
+        *   `Industry`: Should be set to "Hospitality" or "Food & Beverage".
+        *   `Ownership`: e.g., 'Private', 'Franchise'.
+    *   **Key Custom Fields (Restaurant Specific):**
+        *   `Account.Cuisine_Type__c` (Picklist or Multi-select Picklist): e.g., 'Italian', 'Mexican', 'Indian', 'Chinese', 'Cafe', 'Fine Dining'.
+        *   `Account.Restaurant_Size__c` (Picklist): e.g., 'Small (1-20 seats)', 'Medium (21-60 seats)', 'Large (61+ seats)', 'Food Truck', 'Ghost Kitchen'. (Alternatively, `Estimated_Covers_Per_Day__c` (Number)).
+        *   `Account.Current_Ordering_System__c` (Text): Free-text field to note any existing online ordering systems they use.
+        *   `Account.Point_of_Sale_System__c` (Picklist or Text): If common POS systems are known, a picklist is better. Otherwise, text. e.g., 'Square', 'Toast', 'Clover', 'Custom'.
+        *   `Account.Primary_Contact__c` (Lookup to Contact): Designates the main point of contact at the restaurant.
+        *   `Account.Service_Tier__c` (Picklist): e.g., 'Basic', 'Premium', 'Enterprise'.
+        *   `Account.Activation_Date__c` (Date): Date when the restaurant officially goes live on the platform.
+        *   `Account.AI_Assigned_Priority__c` (Number or Picklist): Priority assigned by AI for onboarding attention (e.g., 1-5 or High/Medium/Low).
+        *   `Account.Missing_Onboarding_Data_Flags__c` (Text Area or Multi-select Picklist): To flag what critical information is still missing (e.g., 'Menu Missing', 'Banking Details Missing', 'Documents Pending'). AI can help populate this.
 
-## 2. Outreach
+*   **Contact (Represents Individuals at the Restaurant):**
+    *   **Purpose:** Stores information about people associated with the restaurant Account (owners, managers, chefs, finance contacts).
+    *   **Key Standard Fields:**
+        *   `AccountId` (Lookup to Account): Links the contact to the restaurant.
+        *   `FirstName`, `LastName`, `Email`, `Phone`, `MobilePhone`, `Title`.
+        *   `HasOptedOutOfEmail`: Standard opt-out field.
+    *   **Key Custom Fields:**
+        *   `Contact.Role_At_Restaurant__c` (Picklist): e.g., 'Owner', 'Manager', 'Chef', 'Finance Contact', 'Technical Contact'.
+        *   `Contact.Receives_Onboarding_Comms__c` (Checkbox): Indicates if this contact should receive onboarding-related communications.
 
-*   **Standard Object: Campaign**
-    *   `CampaignName` (Standard Field, Text): Name of the outreach initiative (e.g., "Q3 New User Acquisition AI Drip").
-    *   `Type` (Standard Field, Picklist): e.g., Email, Webinar, Conference.
-    *   `Status` (Standard Field, Picklist): e.g., Planned, In Progress, Completed.
-    *   `StartDate` (Standard Field, Date)
-    *   `EndDate` (Standard Field, Date)
+*   **Opportunity (Optional, for Tracking Sign-ups as Deals):**
+    *   **Purpose:** Can be used to represent the "deal" of signing up a new restaurant, especially if there's a sales process or contract negotiation involved before onboarding formally begins. If onboarding starts immediately after a simple sign-up, an Opportunity might be overkill, and the `Restaurant_Onboarding__c` record can be created directly.
+    *   **Key Standard Fields:**
+        *   `AccountId` (Lookup to Account): The restaurant being signed up.
+        *   `Name`: e.g., "[Restaurant Name] - New Signup".
+        *   `StageName`: Sales lifecycle (e.g., 'Prospecting', 'Qualification', 'Needs Analysis', 'Proposal/Price Quote', 'Negotiation/Review', 'Closed Won', 'Closed Lost').
+        *   `CloseDate`: Expected date to close the deal (restaurant goes live or contract signed).
+        *   `Amount`: Potential value of the signup (if applicable).
+    *   **Usage:** When an Opportunity `StageName` reaches 'Closed Won', it can trigger the creation of a `Restaurant_Onboarding__c` record.
 
-*   **Standard Object: CampaignMember**
-    *   `CampaignId` (Standard Field, Lookup to Campaign)
-    *   `LeadId` (Standard Field, Lookup to Lead)
-    *   `ContactId` (Standard Field, Lookup to Contact)
-    *   `Status` (Standard Field, Picklist): Tracks individual's progress in the campaign (e.g., Sent, Opened, Clicked, Responded, Unsubscribed). This is crucial for tracking email sends and responses.
+## 2. Custom Object: `Restaurant_Onboarding__c`
 
-*   **Standard Object: Activity (Task or Event)**
-    *   `Subject` (Standard Field, Text): e.g., "Email: Initial Outreach", "Call: Follow-up".
-    *   `Type` (Standard Field, Picklist): 'Email', 'Call', 'Meeting'.
-    *   `Status` (Standard Field, Picklist): For Tasks: Not Started, In Progress, Completed, Waiting on someone else, Deferred. For Events: Planned, Held, Not Held.
-    *   `Priority` (Standard Field, Picklist)
-    *   `ActivityDate` (Standard Field, Date for Tasks) / `StartDateTime`, `EndDateTime` (Standard Fields for Events): Tracks when the email was sent or the call/meeting occurred.
-    *   `Description` (Standard Field, Long Text Area): Can store email body, call notes, or response snippets.
-    *   `WhoId` (Standard Field, Lookup to Contact or Lead): The person associated with the activity.
-    *   `WhatId` (Standard Field, Lookup to Account, Opportunity, etc.): The record associated with the activity.
+*   **Purpose:** This is the central custom object to track the detailed progress of a single restaurant through all stages of the onboarding lifecycle, from initial agreement/signup to going live. It acts as a case or project management tool for each onboarding instance.
+*   **Relationships:**
+    *   `Account__c` (Master-Detail or Lookup to `Account`): Links the onboarding process to the specific restaurant. Master-Detail is often preferred if the onboarding record should not exist without an Account and for easier rollup summaries.
+*   **Key Custom Fields:**
+    *   `Onboarding_ID__c` (Auto-Number/Text): A unique identifier for the onboarding process.
+    *   `Onboarding_Stage__c` (Picklist): Defines the current stage of the onboarding process. Values are critical for tracking and AI prompts:
+        *   'New Signup / Pending Initiation'
+        *   'Initial Contact Made'
+        *   'Information Gathering' (e.g., for KYC, operational details)
+        *   'Documents Requested'
+        *   'Documents Submitted'
+        *   'Documents Verified'
+        *   'Menu Collection Pending'
+        *   'Menu Submitted / Processing'
+        *   'Menu Digitization / Setup'
+        *   'Menu Approved by Restaurant'
+        *   'Platform Profile Setup Pending'
+        *   'Platform Profile Complete'
+        *   'Banking Setup Pending'
+        *   'Banking Details Submitted'
+        *   'Banking Details Verified'
+        *   'Integration Setup (POS/Other)' (If applicable)
+        *   'Training Scheduled'
+        *   'Training Completed'
+        *   'Ready for Activation Review'
+        *   'Activation Approved / Go-Live Scheduled'
+        *   'Live'
+        *   'Post-Live Check-in'
+        *   'Onboarding Complete'
+        *   'Onboarding Halted / Cancelled'
+    *   `Onboarding_Status__c` (Picklist): Provides further detail on the current state, e.g., 'On Track', 'At Risk', 'Delayed', 'Needs Attention', 'Awaiting Restaurant Action'. AI can help set this.
+    *   `Onboarding_Owner__c` (Lookup to `User`): The internal specialist responsible for this restaurant's onboarding.
+    *   `Stage_Entry_Date__c` (Date/Time): Timestamp when the current `Onboarding_Stage__c` was entered. Useful for SLA tracking and identifying bottlenecks.
+    *   `Kick_Off_Date__c` (Date): Date onboarding process officially started.
+    *   `Projected_Go_Live_Date__c` (Date): Estimated date for the restaurant to go live.
+    *   `Actual_Go_Live_Date__c` (Date): The date the restaurant actually went live.
+    *   `Documents_Portal_Link__c` (URL): Link to a shared folder/portal (e.g., SharePoint, Google Drive) for document exchange.
+    *   `Missing_Information_Detail__c` (Long Text Area): Detailed notes on what specific information or actions are pending from the restaurant or internally. AI can populate this.
+    *   `Next_Step_AI__c` (Text Area): AI-suggested next best action for the onboarding owner.
+    *   `AI_Onboarding_Priority__c` (Number or Picklist): Overrides Account-level priority if needed for this specific onboarding instance.
+    *   `Menu_Submission_Date__c` (Date)
+    *   `Menu_Approval_Date__c` (Date)
+    *   `Banking_Submission_Date__c` (Date)
+    *   `Banking_Approval_Date__c` (Date)
+    *   `Documents_Submission_Date__c` (Date)
+    *   `Documents_Approval_Date__c` (Date)
+    *   `Time_In_Current_Stage_Days__c` (Formula, Number): Calculates days spent in the current stage using `Stage_Entry_Date__c`.
+    *   `Total_Onboarding_Duration_Days__c` (Formula, Number): Calculates total days from `Kick_Off_Date__c` to `Actual_Go_Live_Date__c` or today if not live.
+    *   `Onboarding_Notes__c` (Long Text Area): General notes and history for the onboarding process.
 
-*   **Custom Object: Email_Interaction__oc** (Consider if Activity object is insufficient for detailed email tracking)
-    *   `Contact__c` (Lookup to Contact)
-    *   `Account__c` (Lookup to Account, Master-Detail or Lookup)
-    *   `Campaign__c` (Lookup to Campaign)
-    *   `Email_Subject__c` (Text)
-    *   `Sent_DateTime__c` (DateTime)
-    *   `Opened_DateTime__c` (DateTime, nullable)
-    *   `Clicked_DateTime__c` (DateTime, nullable)
-    *   `Response_Received_DateTime__c` (DateTime, nullable)
-    *   `Response_Content__c` (Long Text Area, nullable)
-    *   `Response_Sentiment__c` (Picklist: Positive, Neutral, Negative, N/A)
+## 3. Activities (Tasks and Events)
 
-## 3. Engagement
+*   **Standard `Task` and `Event` objects** will be used extensively, related to `Account`, `Contact`, and `Restaurant_Onboarding__c` (via `WhatId` or `RelatedTo` fields).
+*   **Purpose:** To log calls, emails, meetings, internal follow-ups, document collection efforts, menu review sessions, etc.
+*   **Key Custom Fields on `Activity` (Task/Event) (Examples):**
+    *   `Activity.Onboarding_Related_To_Stage__c` (Picklist, values mirror `Restaurant_Onboarding__c.Onboarding_Stage__c`): To categorize activities by the onboarding stage they occurred in or relate to.
+    *   `Activity.AI_Generated_Summary__c` (Long Text Area): For AI to summarize call transcripts or email threads.
 
-*   **Standard Object: Activity (Task or Event)**
-    *   As above, used for logging conversations (calls, meetings).
-    *   `Description` (Standard Field, Long Text Area): Store detailed notes or transcripts of conversations.
-    *   `AI_Conversation_Summary__c` (Custom Field, Long Text Area): AI-generated summary of the conversation logged in `Description`.
+## 4. Files / Attachments / Content
 
-*   **Standard Object: Contact**
-    *   `Decision_Maker_Status__c` (Custom Field, Picklist): e.g., Decision Maker, Influencer, User, Gatekeeper, Not Identified. To help identify decision-makers.
-    *   `Engagement_Level__c` (Custom Field, Picklist or Number): e.g., High, Medium, Low, based on interactions.
+*   **Standard `File` / `Attachment` / `ContentDocument` objects** will be used to store:
+    *   Signed contracts
+    *   Restaurant menus (various versions)
+    *   Business licenses, permits
+    *   Photos for the platform profile
+    *   Banking information documents (securely handled as per Salesforce Shield / security guidelines if applicable)
+*   These will be related to `Account`, `Contact`, or `Restaurant_Onboarding__c` records.
 
-*   **Custom Object: Conversation_Log__oc** (If Activity object is not granular enough for conversation details)
-    *   `Contact__c` (Lookup to Contact)
-    *   `Account__c` (Lookup to Account, Master-Detail or Lookup)
-    *   `Interaction_DateTime__c` (DateTime)
-    *   `Channel__c` (Picklist: Email, Chat, Call, Meeting)
-    *   `Full_Transcript__c` (Long Text Area, if available and permissible)
-    *   `AI_Generated_Summary__c` (Long Text Area)
-    *   `Key_Topics_Discussed__c` (Text Area, tags or keywords)
-    *   `Identified_Needs_Pain_Points__c` (Text Area)
-    *   `Expressed_Interest_Level__c` (Picklist: High, Medium, Low, None)
-    *   `Next_Steps_Agreed__c` (Text Area)
+## 5. Considerations for AI Prompts & Automation
 
-## 4. Onboarding
+*   **Data Completeness:** Fields like `Account.Missing_Onboarding_Data_Flags__c` and `Restaurant_Onboarding__c.Missing_Information_Detail__c` directly feed AI prompts for requesting missing info.
+*   **Prioritization:** `Account.AI_Assigned_Priority__c` and `Restaurant_Onboarding__c.AI_Onboarding_Priority__c` guide AI focus.
+*   **Next Best Action:** `Restaurant_Onboarding__c.Next_Step_AI__c` is where the AI logs its suggestions.
+*   **Stage Progression:** The AI will monitor key date fields and status changes on `Restaurant_Onboarding__c` to trigger stage updates or alerts.
+*   **Communication Triggers:** Changes in `Onboarding_Stage__c` or `Onboarding_Status__c` can trigger AI-assisted communication with the restaurant contact or internal owner.
+*   **Bottleneck Identification:** AI can analyze `Time_In_Current_Stage_Days__c` across multiple onboarding records to identify common bottlenecks.
 
-*   **Standard Object: Account**
-    *   `First_Trip_Date__c` (Custom Field, Date): Date of the organization's first completed "trip" or key activation event.
-    *   `Onboarding_Status__c` (Custom Field, Picklist): e.g., Not Started, Initial Contact, Demo Scheduled, Technical Setup, First Trip Pending, First Trip Completed, Fully Onboarded.
+This data model provides a comprehensive foundation for building a robust restaurant onboarding application within Salesforce, with clear roles for standard and custom objects and fields designed to support AI-driven assistance and automation.Okay, I have updated the `salesforce_object_outline.md` file with the new content focusing on the "Restaurant Onboarding" lifecycle.
 
-*   **Standard Object: Opportunity** (If "first trip" is part of a sales or trial conversion process)
-    *   `StageName` (Standard Field, Picklist): Could include stages like "Trial Started", "Awaiting First Trip".
-    *   `First_Trip_Completed_Date__c` (Custom Field, Date): On the Opportunity if it's a key milestone for closing the deal.
+The file now includes:
+1.  **Standard Objects:** Details on how `Lead`, `Account`, `Contact`, and `Opportunity` are utilized in restaurant onboarding.
+2.  **Custom Object `Restaurant_Onboarding__c`:** Elaboration on its structure, purpose, relationship to Account, and key custom fields including:
+    *   `Onboarding_Stage__c` (with a comprehensive picklist of stages)
+    *   `Onboarding_Owner__c`
+    *   `Account__c`
+    *   Various date fields for tracking stage progression (e.g., `Stage_Entry_Date__c`, `Menu_Submitted_Date__c`).
+3.  **Key Custom Fields on `Account`:**
+    *   `Cuisine_Type__c`
+    *   `Restaurant_Size__c`
+    *   `Current_Ordering_System__c`
+    *   `Point_of_Sale_System__c`
+    *   `AI_Assigned_Priority__c`
+    *   `Missing_Onboarding_Data_Flags__c`
+4.  **Other relevant objects and fields:** Use of Activities (Tasks/Events) and Files/Attachments, with considerations for AI prompts (data completeness, prioritization, next best action, stage progression, communication triggers, bottleneck identification).
 
-*   **Custom Object: Trip__oc** (If "trips" are a central concept needing detailed attributes beyond a date)
-    *   `Account__c` (Lookup to Account, Master-Detail)
-    *   `Trip_DateTime__c` (DateTime): Start time of the trip.
-    *   `Trip_Duration_Minutes__c` (Number)
-    *   `Trip_Type__c` (Picklist: e.g., Evaluation, Standard, Premium Feature X)
-    *   `Is_First_Account_Trip__c` (Boolean, Workflow/Process Builder updated): Marks if this was the account's first trip.
-    *   `Associated_User_Contact__c` (Lookup to Contact, optional)
-
-## 5. Retention
-
-*   **Standard Object: Case**
-    *   `AccountId` (Standard Field, Lookup to Account)
-    *   `ContactId` (Standard Field, Lookup to Contact)
-    *   `Subject` (Standard Field, Text): Brief summary of the feedback or issue.
-    *   `Description` (Standard Field, Long Text Area): Detailed feedback content.
-    *   `Type` (Standard Field, Picklist): e.g., Feedback, Problem, Question, Feature Request.
-    *   `Reason` (Standard Field, Picklist): Sub-category for the type.
-    *   `Status` (Standard Field, Picklist): e.g., New, In Progress, Awaiting Customer Response, Resolved, Closed.
-    *   `Origin` (Standard Field, Picklist): e.g., AI Assistant, Email, Phone, Web Form.
-    *   `Priority` (Standard Field, Picklist)
-    *   `Feedback_Sentiment__c` (Custom Field, Picklist: Positive, Neutral, Negative, Mixed): Can be manually set or AI-derived from `Description`.
-
-*   **Custom Object: Feedback_Entry__oc** (If `Case` object is too process-heavy for simple feedback logging)
-    *   `Account__c` (Lookup to Account)
-    *   `Contact__c` (Lookup to Contact, optional)
-    *   `Submission_DateTime__c` (DateTime)
-    *   `Source_Channel__c` (Picklist: AI Assistant, In-App Survey, Email Feedback)
-    *   `Feedback_Category__c` (Picklist: Compliment, Complaint, Suggestion, Usability Issue)
-    *   `Feedback_Text__c` (Long Text Area)
-    *   `Sentiment__c` (Picklist: Positive, Neutral, Negative) - Potentially AI-populated.
-    *   `Related_Feature_Area__c` (Text or Picklist, optional)
-
-## 6. Meta Prompts (Data for Summaries and Prioritization)
-
-This category leverages data from the objects and fields detailed above. The AI would perform queries and aggregations on:
-
-*   **Account Data:** `Last_Activity_Date__c`, `Verified_Email_Organization__c`, `Industry`, `NumberOfEmployees`, `Onboarding_Status__c`, `First_Trip_Date__c`, `AccountSource`.
-*   **Contact Data:** `Decision_Maker_Status__c`, `Is_Freemail__c`, `Engagement_Level__c`.
-*   **Activity/Conversation Data:** `Type`, `Status`, `ActivityDate` (`StartDateTime`), `AI_Conversation_Summary__c`, `Key_Topics_Discussed__c`, `Identified_Needs_Pain_Points__c`.
-*   **Campaign & Outreach Data:** `CampaignMember.Status`, `Response_Sentiment__c` (from `Email_Interaction__oc`).
-*   **Onboarding Data:** `Account.Onboarding_Status__c`, `Account.First_Trip_Date__c` or `Trip__oc.Is_First_Account_Trip__c`.
-*   **Retention/Feedback Data:** `Case.Type`, `Case.Reason`, `Case.Status`, `Case.Feedback_Sentiment__c` or `Feedback_Entry__oc.Sentiment__c`.
-*   **Opportunity Data (if applicable):** `StageName`, `Amount`, `CloseDate`, `NextStep`.
-
-The AI assistant would use this data to:
-*   Generate summaries of customer health or engagement.
-*   Prioritize outreach based on activity signals (or lack thereof).
-*   Identify accounts needing attention for retention.
-*   Segment customers for targeted campaigns.
-*   Provide context for conversations.
-
-**Note on Custom Suffixes:**
-*   `__c`: Standard Salesforce suffix for custom fields on standard or custom objects, and for the API name of custom objects.
-*   `__oc`: Used here conceptually to distinguish proposed custom objects from standard objects during this planning phase. In an actual Salesforce implementation, custom objects also end in `__c` for their API names (e.g., `Email_Interaction__c`).
-
-This outline provides a foundational structure. Specific field types, picklist values, and relationships might be refined during actual implementation based on more detailed requirements.
+The document should now serve as a comprehensive data model guide for the restaurant onboarding application.
